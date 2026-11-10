@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app import models, schemas
@@ -35,3 +36,20 @@ def withdraw(account_id: int, payload: schemas.AmountIn, db: Session = Depends(g
     db.commit()
     db.refresh(txn)
     return txn
+
+
+@router.get("/{account_id}/statement", response_model=list[schemas.TransactionOut])
+def statement(account_id: int, db: Session = Depends(get_db)):
+    """Every transaction that touched this account, newest first."""
+    get_account_or_404(db, account_id)
+    query = (
+        select(models.Transaction)
+        .where(
+            or_(
+                models.Transaction.from_account_id == account_id,
+                models.Transaction.to_account_id == account_id,
+            )
+        )
+        .order_by(models.Transaction.id.desc())
+    )
+    return db.scalars(query).all()

@@ -1,4 +1,6 @@
+from datetime import datetime
 from decimal import Decimal
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -19,6 +21,12 @@ class AmountIn(BaseModel):
     amount: Decimal = Field(gt=0, max_digits=12, decimal_places=2)
 
 
+class TransferIn(BaseModel):
+    from_account_id: int
+    to_account_id: int
+    amount: Decimal = Field(gt=0, max_digits=12, decimal_places=2)
+
+
 class TransactionOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -27,9 +35,19 @@ class TransactionOut(BaseModel):
     amount: Decimal
     from_account_id: int | None
     to_account_id: int | None
+    created_at: datetime
 
 
-class TransferIn(BaseModel):
-    from_account_id: int
-    to_account_id: int
-    amount: Decimal = Field(gt=0, max_digits=12, decimal_places=2)
+class FlagOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    transaction_id: int
+    rule: str
+    reason: str
+    status: str
+    created_at: datetime
+
+
+class FlagReview(BaseModel):
+    status: Literal["reviewed", "dismissed"]
