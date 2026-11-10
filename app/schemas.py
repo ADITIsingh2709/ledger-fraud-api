@@ -27,3 +27,9 @@ class TransactionOut(BaseModel):
     amount: Decimal
     from_account_id: int | None
     to_account_id: int | None
+
+
+class TransferIn(BaseModel):
+    from_account_id: int
+    to_account_id: int
+    amount: Decimal = Field(gt=0, max_digits=12, decimal_places=2)
