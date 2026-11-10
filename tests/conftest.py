@@ -9,17 +9,20 @@ from app.main import app
 
 
 @pytest.fixture()
-def client():
+def session_factory():
     engine = create_engine(
         "sqlite://",
         connect_args={"check_same_thread": False},
         poolclass=StaticPool,
     )
-    TestingSession = sessionmaker(bind=engine, autoflush=False)
     Base.metadata.create_all(bind=engine)
+    return sessionmaker(bind=engine, autoflush=False)
 
+
+@pytest.fixture()
+def client(session_factory):
     def override_get_db():
-        db = TestingSession()
+        db = session_factory()
         try:
             yield db
         finally:
