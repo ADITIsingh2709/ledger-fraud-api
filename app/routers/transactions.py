@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app import models, schemas
 from app.database import get_db
 from app.routers.accounts import get_account_or_404
+from app.services import fraud_rules
 
 router = APIRouter(prefix="/accounts", tags=["transactions"])
 
@@ -14,6 +15,8 @@ def deposit(account_id: int, payload: schemas.AmountIn, db: Session = Depends(ge
     account.balance = account.balance + payload.amount
     txn = models.Transaction(type="deposit", amount=payload.amount, to_account_id=account.id)
     db.add(txn)
+    db.flush()  # assigns txn.id so the rules can look at it
+    fraud_rules.evaluate(db, txn)
     db.commit()
     db.refresh(txn)
     return txn
@@ -27,6 +30,8 @@ def withdraw(account_id: int, payload: schemas.AmountIn, db: Session = Depends(g
     account.balance = account.balance - payload.amount
     txn = models.Transaction(type="withdrawal", amount=payload.amount, from_account_id=account.id)
     db.add(txn)
+    db.flush()
+    fraud_rules.evaluate(db, txn)
     db.commit()
     db.refresh(txn)
     return txn

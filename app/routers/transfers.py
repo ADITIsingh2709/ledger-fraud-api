@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app import models, schemas
 from app.database import get_db
 from app.routers.accounts import get_account_or_404
+from app.services import fraud_rules
 
 router = APIRouter(prefix="/transfers", tags=["transfers"])
 
@@ -19,8 +20,8 @@ def transfer(payload: schemas.TransferIn, db: Session = Depends(get_db)):
     if source.balance < payload.amount:
         raise HTTPException(status_code=400, detail="Insufficient funds")
 
-    # Debit, credit and the ledger entry are saved in ONE database transaction:
-    # either all three succeed or none of them do.
+    # Debit, credit, ledger entry and fraud flags are saved in ONE database
+    # transaction: either all of them succeed or none of them do.
     try:
         source.balance = source.balance - payload.amount
         destination.balance = destination.balance + payload.amount
@@ -31,6 +32,8 @@ def transfer(payload: schemas.TransferIn, db: Session = Depends(get_db)):
             to_account_id=destination.id,
         )
         db.add(txn)
+        db.flush()
+        fraud_rules.evaluate(db, txn)
         db.commit()
     except Exception:
         db.rollback()
